@@ -1,0 +1,5 @@
+package: github.com/hirokazumiyaji/goflake-server
+import:
+- package: github.com/hirokazumiyaji/goflake
+- package: github.com/ugorji/go/codec
+- package: github.com/valyala/fasthttp

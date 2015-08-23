@@ -1,0 +1,24 @@
+sudo: false
+language: go
+
+go:
+  - 1.7
+  - tip
+
+cache:
+  directories:
+    - vendor
+
+before_install:
+  - curl -LO https://github.com/Masterminds/glide/releases/download/0.12.2/glide-0.12.2-linux-amd64.tar.gz
+  - tar zxf glide-0.12.2-linux-amd64.tar.gz
+  - mkdir -p $GOPATH/bin
+  - mv linux-amd64/glide $GOPATH/bin/
+
+install:
+  - make bundle
+
+script:
+  - make clean
+  - make test
+  - make dist
