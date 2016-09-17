@@ -98,7 +98,10 @@ func main() {
 	}
 
 	m := func(ctx *fasthttp.RequestCtx) {
-		if strings.HasPrefix(string(ctx.Path()), "/id") {
+		p := string(ctx.Path())
+		if strings.HasPrefix(p, "/ids") {
+			idsHandlerFunc(ctx, idWorker, retry)
+		} else if strings.HasPrefix(p, "/id") {
 			idHandlerFunc(ctx, idWorker, retry)
 		} else {
 			ctx.Error("", fasthttp.StatusNotFound)
@@ -128,6 +131,50 @@ func idHandlerFunc(ctx *fasthttp.RequestCtx, idWorker *goflake.IdWorker, retry i
 	}
 
 	if strings.HasSuffix(string(ctx.Path()), ".msgpack") {
+		ctx.SetContentType("application/x-msgpack; charset=UTF-8")
+		if err := codec.NewEncoder(ctx, mh).Encode(r); err != nil {
+			ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		}
+	} else {
+		ctx.SetContentType("application/json; charset=UTF-8")
+		if err := json.NewEncoder(ctx).Encode(r); err != nil {
+			ctx.Error(fmt.Sprintf(`{"error":"%v"}`, err.Error()), fasthttp.StatusInternalServerError)
+		}
+	}
+}
+
+func idsHandlerFunc(ctx *fasthttp.RequestCtx, idWorker *goflake.IdWorker, retry int) {
+	ua := string(ctx.UserAgent())
+
+	limit := 10
+	l, err := ctx.QueryArgs().GetUint("limit")
+	if err == nil {
+		limit = int(l)
+	}
+
+	ids := make([]string, 0, limit)
+
+	for {
+		var id uint64
+		for i := 0; i < retry; i++ {
+			id, err = idWorker.GetId(ua)
+			if err == nil {
+				break
+			}
+		}
+		if id != 0 {
+			ids = append(ids, strconv.FormatUint(id, 10))
+			if len(ids) >= limit {
+				break
+			}
+		}
+	}
+
+	r := map[string][]string{
+		"ids": ids,
+	}
+
+	if strings.Contains(string(ctx.Path()), ".msgpack") {
 		ctx.SetContentType("application/x-msgpack; charset=UTF-8")
 		if err := codec.NewEncoder(ctx, mh).Encode(r); err != nil {
 			ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
