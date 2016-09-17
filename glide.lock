@@ -1,10 +1,6 @@
 hash: 5686e41ecb152b22dd7ba04a4ac2af3aa157320d6156162735db94f3788e1bab
-updated: 2016-09-16T15:19:41.197049315+09:00
+updated: 2016-09-17T22:47:12.519053+09:00
 imports:
-- name: github.com/golang/protobuf
-  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
-  subpackages:
-  - proto
 - name: github.com/hirokazumiyaji/goflake
   version: 352a85512d3220b21b673a3552b8848ce1388361
 - name: github.com/klauspost/compress
@@ -27,25 +23,4 @@ imports:
   version: 95be7a58499b79d1a42a4e9880fb90645345c021
   subpackages:
   - fasthttputil
-- name: golang.org/x/net
-  version: 71a035914f99bb58fe82eac0f1289f10963d876c
-  subpackages:
-  - context
-  - http2
-  - trace
-  - http2/hpack
-  - idna
-  - lex/httplex
-  - internal/timeseries
-- name: google.golang.org/grpc
-  version: 71d2ea4f75286a63b606aca2422cd17ff37fd5b8
-  subpackages:
-  - credentials
-  - grpclog
-  - codes
-  - internal
-  - metadata
-  - naming
-  - transport
-  - peer
 testImports: []
