@@ -1,8 +1,8 @@
 hash: 5686e41ecb152b22dd7ba04a4ac2af3aa157320d6156162735db94f3788e1bab
-updated: 2016-09-17T22:47:12.519053+09:00
+updated: 2016-09-18T09:30:40.382178666+09:00
 imports:
 - name: github.com/hirokazumiyaji/goflake
-  version: 352a85512d3220b21b673a3552b8848ce1388361
+  version: 64137dd13c98a518ff6c8b8f24adca4231565e37
 - name: github.com/klauspost/compress
   version: 08fe86a420401e830c24114bdf9f1ba91331407a
   subpackages:

@@ -92,58 +92,45 @@ func main() {
 		log.Fatalf("start time parse error. %v\n", err)
 	}
 
-	idWorker, err := goflake.NewIdWorker(uint16(datacenterID), uint16(workerID), t)
+	w, err := goflake.NewIDWorker(uint16(datacenterID), uint16(workerID), t)
 	if err != nil {
 		log.Fatalf("could not create id worker. %v\n", err)
 	}
 
-	m := func(ctx *fasthttp.RequestCtx) {
+	m := handler(w, retry)
+	log.Fatal(fasthttp.ListenAndServe(fmt.Sprintf("%s:%d", ip, port), m))
+}
+
+func handler(w *goflake.IDWorker, r int) func(ctx *fasthttp.RequestCtx) {
+	return func(ctx *fasthttp.RequestCtx) {
 		p := string(ctx.Path())
 		if strings.HasPrefix(p, "/ids") {
-			idsHandlerFunc(ctx, idWorker, retry)
+			idsHandlerFunc(ctx, p, w, r)
 		} else if strings.HasPrefix(p, "/id") {
-			idHandlerFunc(ctx, idWorker, retry)
+			idHandlerFunc(ctx, p, w, r)
 		} else {
 			ctx.Error("", fasthttp.StatusNotFound)
 		}
 	}
-
-	log.Fatal(fasthttp.ListenAndServe(fmt.Sprintf("%s:%d", ip, port), m))
 }
 
-func idHandlerFunc(ctx *fasthttp.RequestCtx, idWorker *goflake.IdWorker, retry int) {
+func idHandlerFunc(ctx *fasthttp.RequestCtx, p string, w *goflake.IDWorker, retry int) {
 	ua := string(ctx.UserAgent())
 
-	var (
-		id  uint64
-		err error
-	)
-
-	for i := 0; i < retry; i++ {
-		id, err = idWorker.GetId(ua)
-		if err == nil {
-			break
-		}
+	id, err := getID(w, ua, retry)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
 	}
 
 	r := map[string]string{
 		"id": strconv.FormatUint(id, 10),
 	}
 
-	if strings.HasSuffix(string(ctx.Path()), ".msgpack") {
-		ctx.SetContentType("application/x-msgpack; charset=UTF-8")
-		if err := codec.NewEncoder(ctx, mh).Encode(r); err != nil {
-			ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
-		}
-	} else {
-		ctx.SetContentType("application/json; charset=UTF-8")
-		if err := json.NewEncoder(ctx).Encode(r); err != nil {
-			ctx.Error(fmt.Sprintf(`{"error":"%v"}`, err.Error()), fasthttp.StatusInternalServerError)
-		}
-	}
+	render(ctx, p, r)
 }
 
-func idsHandlerFunc(ctx *fasthttp.RequestCtx, idWorker *goflake.IdWorker, retry int) {
+func idsHandlerFunc(ctx *fasthttp.RequestCtx, p string, w *goflake.IDWorker, retry int) {
 	ua := string(ctx.UserAgent())
 
 	limit := 10
@@ -156,13 +143,8 @@ func idsHandlerFunc(ctx *fasthttp.RequestCtx, idWorker *goflake.IdWorker, retry 
 
 	for {
 		var id uint64
-		for i := 0; i < retry; i++ {
-			id, err = idWorker.GetId(ua)
-			if err == nil {
-				break
-			}
-		}
-		if id != 0 {
+		id, err := getID(w, ua, retry)
+		if err != nil {
 			ids = append(ids, strconv.FormatUint(id, 10))
 			if len(ids) >= limit {
 				break
@@ -174,7 +156,25 @@ func idsHandlerFunc(ctx *fasthttp.RequestCtx, idWorker *goflake.IdWorker, retry 
 		"ids": ids,
 	}
 
-	if strings.Contains(string(ctx.Path()), ".msgpack") {
+	render(ctx, p, r)
+}
+
+func getID(w *goflake.IDWorker, u string, r int) (uint64, error) {
+	var (
+		id  uint64
+		err error
+	)
+	for i := 0; i < r; i++ {
+		id, err = w.GetID(u)
+		if err == nil {
+			break
+		}
+	}
+	return id, err
+}
+
+func render(ctx *fasthttp.RequestCtx, p string, r interface{}) {
+	if strings.Contains(p, ".msgpack") {
 		ctx.SetContentType("application/x-msgpack; charset=UTF-8")
 		if err := codec.NewEncoder(ctx, mh).Encode(r); err != nil {
 			ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
